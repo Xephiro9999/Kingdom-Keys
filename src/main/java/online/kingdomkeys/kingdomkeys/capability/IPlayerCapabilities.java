@@ -1,7 +1,9 @@
 package online.kingdomkeys.kingdomkeys.capability;
 
+import java.time.Instant;
 import java.util.*;
 
+import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceKey;
@@ -329,10 +331,10 @@ public interface IPlayerCapabilities extends INBTSerializable<CompoundTag> {
 	void setSynthExperience(int exp);
 	void addSynthExperience(int exp);
 
-	public SingleChoices getSingleStyle();
-	public void setSingleStyle(SingleChoices singleStyle) ;
-	public DualChoices getDualStyle();
-	public void setDualStyle(DualChoices dualStyle);
+	SingleChoices getSingleStyle();
+	void setSingleStyle(SingleChoices singleStyle) ;
+	DualChoices getDualStyle();
+	void setDualStyle(DualChoices dualStyle);
 
 	boolean getRespawnROD();
 	void setRespawnROD(boolean respawn);
@@ -342,4 +344,8 @@ public interface IPlayerCapabilities extends INBTSerializable<CompoundTag> {
 
 	BlockPos getAirStep();
 	void setAirStep(BlockPos pos);
+
+	Map<UUID, Instant> discoveredSavePoints();
+	void addDiscoveredSavePoint(UUID id, Instant time);
+	void setDiscoveredSavePoints(Map<UUID, Instant> list);
 }

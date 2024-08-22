@@ -1,8 +1,8 @@
 package online.kingdomkeys.kingdomkeys.client;
 
-import java.io.BufferedReader;
-import java.io.ByteArrayInputStream;
-import java.io.InputStreamReader;
+import java.io.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.LinkedHashMap;
 import java.util.List;
 
@@ -14,6 +14,9 @@ import net.minecraft.client.renderer.RenderStateShard;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
+import online.kingdomkeys.kingdomkeys.client.gui.SavePointScreen;
+import online.kingdomkeys.kingdomkeys.client.gui.overlay.COMinimap;
+import online.kingdomkeys.kingdomkeys.entity.block.SavepointTileEntity;
 import online.kingdomkeys.kingdomkeys.handler.ClientEvents;
 import online.kingdomkeys.kingdomkeys.shotlock.ModShotlocks;
 import online.kingdomkeys.kingdomkeys.shotlock.Shotlock;
@@ -98,6 +101,19 @@ import online.kingdomkeys.kingdomkeys.util.Utils.Title;
 
 public class ClientUtils {
 
+    public static boolean getResourceExists(String path){
+        try {
+            Minecraft.getInstance().getResourceManager().getResourceOrThrow(new ResourceLocation(KingdomKeys.MODID, path));
+            return true;
+        } catch (FileNotFoundException e) {
+            return false;
+        }
+    }
+
+    public static ResourceLocation getResourceExistsOrDefault(String path, String name, String defaultName){
+        return new ResourceLocation(KingdomKeys.MODID, String.format(path, getResourceExists(String.format(path, name)) ? name : defaultName));
+    }
+
 	public static DistExecutor.SafeRunnable openMagicCustomize(LinkedHashMap<String, int[]> knownMagic) {
         return new DistExecutor.SafeRunnable() {
             @Override
@@ -142,9 +158,9 @@ public class ClientUtils {
                 Player player = Minecraft.getInstance().player;
                 OrgPortalEntity portal;
                 if (msg.pos != msg.destPos)
-                    portal = new OrgPortalEntity(player.level(), player, msg.pos, msg.destPos, msg.dimension, true);
+                    portal = new OrgPortalEntity(player.level(), msg.pos, msg.destPos, msg.dimension, true);
                 else
-                    portal = new OrgPortalEntity(player.level(), player, msg.pos, msg.destPos, msg.dimension, false);
+                    portal = new OrgPortalEntity(player.level(), msg.pos, msg.destPos, msg.dimension, false);
 
                 player.level().addFreshEntity(portal);
             }
@@ -548,7 +564,6 @@ public class ClientUtils {
 		
 		public void setDefault() {
             if(model != null) {
-                
                 switch(angle) {
                 case X:
                     model.xRot = (float) Math.toRadians(defVal);
@@ -879,6 +894,52 @@ public class ClientUtils {
         vertexBuilder.vertex(matrix, maxX, minY, maxZ).uv((maxTexU * cor), (maxTexV) * cor).endVertex();
         vertexBuilder.vertex(matrix, maxX, maxY, minZ).uv((maxTexU * cor), (minTexV) * cor).endVertex();
         vertexBuilder.vertex(matrix, minX, maxY, minZ).uv((minTexU * cor), (minTexV) * cor).endVertex();
+    }
+
+    public static DistExecutor.SafeRunnable openSavePointScreen(SCOpenSavePointScreen message) {
+        return new DistExecutor.SafeRunnable() {
+            @Override
+            public void run() {
+                Minecraft.getInstance().setScreen(new SavePointScreen((SavepointTileEntity) Minecraft.getInstance().level.getBlockEntity(message.tileEntity()), message.savePoints(), message.create()));
+            }
+        };
+    }
+
+    public static DistExecutor.SafeRunnable updateSavePoints(SCUpdateSavePoints message) {
+        return new DistExecutor.SafeRunnable() {
+            @Override
+            public void run() {
+                if (Minecraft.getInstance().screen instanceof SavePointScreen savePointScreen) {
+                    savePointScreen.updateSavePointsFromServer(message.savePoints());
+                }
+            }
+        };
+    }
+
+    public static DistExecutor.SafeRunnable deleteScreenshot(SCDeleteSavePointScreenshot message) {
+        return new DistExecutor.SafeRunnable() {
+            @Override
+            public void run() {
+                File screenshotFile = ScreenshotManager.getScreenshotFile(message.name(), message.uuid());
+                if (screenshotFile != null) {
+                    String path = screenshotFile.getPath();
+                    if (!screenshotFile.delete()) {
+                        KingdomKeys.LOGGER.warn("Failed to delete screenshot file {}", path);
+                    } else {
+                        KingdomKeys.LOGGER.info("Deleted save point screenshot: {}", screenshotFile.getName());
+                    }
+                }
+            }
+        };
+    }
+
+    public static DistExecutor.SafeRunnable updateCORooms(SCUpdateCORooms message) {
+        return new DistExecutor.SafeRunnable() {
+            @Override
+            public void run() {
+                COMinimap.rooms = message.rooms();
+            }
+        };
     }
 }
 

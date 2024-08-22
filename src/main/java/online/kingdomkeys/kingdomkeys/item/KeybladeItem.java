@@ -50,7 +50,6 @@ import online.kingdomkeys.kingdomkeys.lib.DamageCalculation;
 import online.kingdomkeys.kingdomkeys.lib.Strings;
 import online.kingdomkeys.kingdomkeys.network.PacketHandler;
 import online.kingdomkeys.kingdomkeys.network.cts.CSAttackOffhandPacket;
-import online.kingdomkeys.kingdomkeys.network.cts.CSSummonKeyblade;
 import online.kingdomkeys.kingdomkeys.synthesis.keybladeforge.KeybladeData;
 import online.kingdomkeys.kingdomkeys.synthesis.material.Material;
 import online.kingdomkeys.kingdomkeys.synthesis.recipe.Recipe;
@@ -99,7 +98,7 @@ public class KeybladeItem extends SwordItem implements IItemCategory, IExtendedR
 	}
 
 	public String getDesc() {
-		return data.getDescription();
+		return Utils.translateToLocal(data.getDescription());
 	}
 
 	public void setKeybladeData(KeybladeData data) {
