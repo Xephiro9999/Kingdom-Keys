@@ -50,11 +50,14 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.items.IItemHandler;
 import net.minecraftforge.registries.ForgeRegistries;
 import online.kingdomkeys.kingdomkeys.KingdomKeys;
+import online.kingdomkeys.kingdomkeys.ability.ModAbilities;
+import online.kingdomkeys.kingdomkeys.api.event.AbilityEvent;
 import online.kingdomkeys.kingdomkeys.block.ModBlocks;
 import online.kingdomkeys.kingdomkeys.capability.*;
 import online.kingdomkeys.kingdomkeys.client.sound.ModSounds;
 import online.kingdomkeys.kingdomkeys.command.DimensionCommand;
 import online.kingdomkeys.kingdomkeys.config.ModConfigs;
+import online.kingdomkeys.kingdomkeys.damagesource.KKDamageTypes;
 import online.kingdomkeys.kingdomkeys.damagesource.StopDamageSource;
 import online.kingdomkeys.kingdomkeys.driveform.DriveForm;
 import online.kingdomkeys.kingdomkeys.driveform.DriveFormDataLoader;
@@ -223,7 +226,6 @@ public class EntityEvents {
 					playerData.setDriveFormLevel(DriveForm.NONE.toString(), 1);
 					playerData.setDriveFormLevel(DriveForm.SYNCH_BLADE.toString(), 1);
 					playerData.setDriveFormLevel(Strings.Form_Anti, 1);
-					playerData.addVisibleDriveForm(Strings.Form_Anti);
 
 					if (playerData.getEquippedItems().isEmpty()) {
 						HashMap<Integer, ItemStack> map = new HashMap<Integer, ItemStack>();
@@ -232,10 +234,6 @@ public class EntityEvents {
 						}
 						playerData.equipAllItems(map, true);
 					}
-				}
-
-				if(!playerData.getVisibleDriveForms().contains(Strings.Form_Anti)) {
-					playerData.addVisibleDriveForm(Strings.Form_Anti);
 				}
 
 				if (!playerData.getDriveFormMap().containsKey(Strings.Form_Anti)) {
@@ -1023,7 +1021,8 @@ public class EntityEvents {
 			PacketHandler.sendTo(new SCSyncCapabilityPacket(playerData), (ServerPlayer) player);
 			PacketHandler.sendTo(new SCSyncGlobalCapabilityPacket(globalData), (ServerPlayer) player);
 
-			event.setAmount(damage <= 0 ? 1 : damage);
+			if(!player.isDamageSourceBlocked(event.getSource()))
+				event.setAmount(damage <= 0 ? 1 : damage);
 		}
 
 		// Mobs defense formula
@@ -1057,7 +1056,7 @@ public class EntityEvents {
 
 				if (EntityHelper.getState(event.getEntity()) == 1) { // If marly is armored
 					damage = event.getAmount() * 0.1F;
-					if (event.getSource().getMsgId().equals(KKResistanceType.fire.toString())) {
+					if (event.getSource().is(KKDamageTypes.FIRE)) {
 						mar.marluxiaGoal.removeArmor(mar);
 					}
 				} else if (EntityHelper.getState(event.getEntity()) == 2) {
@@ -1408,7 +1407,6 @@ public class EntityEvents {
 		newPlayerData.setAbilityMap(oldPlayerData.getAbilityMap());
 
 		newPlayerData.setDriveFormMap(oldPlayerData.getDriveFormMap());
-		newPlayerData.setVisibleDriveForms(oldPlayerData.getVisibleDriveForms());
 		newPlayerData.setAntiPoints(oldPlayerData.getAntiPoints());
 		newPlayerData.setActiveDriveForm(oldPlayerData.getActiveDriveForm());
 
@@ -1458,6 +1456,7 @@ public class EntityEvents {
 		Utils.RefreshAbilityAttributes(nPlayer, newPlayerData);
 
 		newPlayerData.setDiscoveredSavePoints(oldPlayerData.discoveredSavePoints());
+		newPlayerData.setSynthesisedRecipes(oldPlayerData.getSynthesisedRecipes());
 
 		PacketHandler.sendTo(new SCSyncWorldCapability(ModCapabilities.getWorld(nPlayer.level())), (ServerPlayer) nPlayer);
 		oPlayer.invalidateCaps();

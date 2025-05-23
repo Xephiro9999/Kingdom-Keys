@@ -3,6 +3,7 @@ package online.kingdomkeys.kingdomkeys.util;
 import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimap;
 import net.minecraft.ChatFormatting;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -65,6 +66,7 @@ import online.kingdomkeys.kingdomkeys.lib.Strings;
 import online.kingdomkeys.kingdomkeys.limit.Limit;
 import online.kingdomkeys.kingdomkeys.limit.ModLimits;
 import online.kingdomkeys.kingdomkeys.magic.Magic;
+import online.kingdomkeys.kingdomkeys.magic.ModMagic;
 import online.kingdomkeys.kingdomkeys.network.PacketHandler;
 import online.kingdomkeys.kingdomkeys.network.stc.SCSyncCapabilityPacket;
 import online.kingdomkeys.kingdomkeys.network.stc.SCSyncWorldCapability;
@@ -93,6 +95,41 @@ public class Utils {
 
 	public static final UUID mobLevelHPModifier = UUID.fromString("c86a76af-4615-4f6e-aaab-b1a349bdeb7b");
 	public static final UUID mobLevelAttackModifier = UUID.fromString("a8971ed5-c584-4579-82e7-5c823009dec0");
+
+	public static ItemStack getWhiteMushroomReward() {
+		ArrayList<Item> list = new ArrayList<>();
+		list.add(ModItems.orichalcum.get());
+		list.add(ModItems.orichalcumplus.get());
+		list.add(ModItems.evanescent_crystal.get());
+		list.add(ModItems.illusory_crystal.get());
+
+		Random rand = new Random();
+		Item item = list.get(rand.nextInt(list.size()));
+		return new ItemStack(item,rand.nextInt(3)+1);
+	}
+
+	public static int getCheapestDriveCost(IPlayerCapabilities playerData, List<DriveForm> driveFormMap) {
+		int min = playerData.isAbilityEquipped(Strings.darkDomination) ? ModDriveForms.ANTI.get().getDriveCost() : 1000;
+		for(DriveForm form : driveFormMap){
+			if(form != null && form.getDriveFormData() != null && form != ModDriveForms.ANTI.get()) {
+				min = Math.min(form.getDriveCost(), min);
+			}
+		}
+		return min;
+	}
+
+	public static double getCheapestMagicCost(LinkedHashMap<String,int[]> magicsMap, Player player) {
+		double min = 1000;
+
+		for (Entry<String,int[]> magic : magicsMap.entrySet()){
+			Magic m = ModMagic.registry.get().getValue(new ResourceLocation(magic.getKey()));
+			if(m != null){
+				int lvl = magic.getValue()[0];
+				min = Math.min(m.getCost(lvl,player),min);
+			}
+		}
+		return min;
+	}
 
 	public static class Title {
 		public String title, subtitle;
@@ -304,11 +341,15 @@ public class Utils {
 
 	}
 
-	public static enum OrgMember {
+	public enum OrgMember {
 		NONE, XEMNAS, XIGBAR, XALDIN, VEXEN, LEXAEUS, ZEXION, SAIX, AXEL, DEMYX, LUXORD, MARLUXIA, LARXENE, ROXAS
 	}
 
 	public static int getDriveFormLevel(Map<String, int[]> map, String driveForm) {
+		if(map.get(driveForm) == null) {
+			KingdomKeys.LOGGER.error("The drive form map doesn't contain " + driveForm);
+			return 0;
+		}
 		if (driveForm.equals(Strings.Form_Anti))
 			return 7;
 		return map.get(driveForm)[0];
@@ -337,16 +378,15 @@ public class Utils {
 		}).collect(Collectors.toMap(Entry::getKey, Entry::getValue, (value, value2) -> value, LinkedHashMap::new));
 	}
 
-	public static LinkedHashMap<String, int[]> getSortedDriveForms(LinkedHashMap<String, int[]> driveFormsMap, LinkedHashSet<String> visibleForms) {
+	public static LinkedHashMap<String, int[]> getSortedDriveForms(LinkedHashMap<String, int[]> driveFormsMap, List<DriveForm> visibleForms) {
 		List<DriveForm> list = new ArrayList<>();
 
-		Iterator<String> it = driveFormsMap.keySet().iterator();
-		while (it.hasNext()) {
-			String entry = it.next();
-			if (visibleForms.contains(entry)) { // Should only add the form if it is visible
-				list.add(ModDriveForms.registry.get().getValue(new ResourceLocation(entry)));
-			}
-		}
+        for (String entry : driveFormsMap.keySet()) {
+			DriveForm form = ModDriveForms.registry.get().getValue(new ResourceLocation(entry));
+            if (visibleForms.contains(form)) { // Should only add the form if it is visible
+                list.add(form);
+            }
+        }
 
 		list.sort(Comparator.comparingInt(DriveForm::getOrder));
 
@@ -774,12 +814,10 @@ public class Utils {
 	public static int getConsumedAP(IPlayerCapabilities playerData) {
 		int ap = 0;
 		LinkedHashMap<String, int[]> map = playerData.getAbilityMap();
-		Iterator<Entry<String, int[]>> it = map.entrySet().iterator();
-		while (it.hasNext()) {
-			Entry<String, int[]> entry = it.next();
-			Ability a = ModAbilities.registry.get().getValue(new ResourceLocation(entry.getKey()));
-			ap += a.getAPCost() * Integer.bitCount(entry.getValue()[1]);
-		}
+        for (Entry<String, int[]> entry : map.entrySet()) {
+            Ability a = ModAbilities.registry.get().getValue(new ResourceLocation(entry.getKey()));
+            ap += a.getAPCost() * Integer.bitCount(entry.getValue()[1]);
+        }
 		return ap;
 	}
 
@@ -1050,27 +1088,6 @@ public class Utils {
 		}
 		lvl += ModCapabilities.getPlayer(player).getNumberOfAbilitiesEquipped(Strings.luckyLucky);
 		return lvl;
-	}
-
-	public static double getMinimumDPForDrive(IPlayerCapabilities playerData) {
-		int minCost = 1000;
-		if (playerData.getDriveFormMap().size() > 2) {
-			for (String e : playerData.getVisibleDriveForms()) {
-				DriveForm form = ModDriveForms.registry.get().getValue(new ResourceLocation(e));
-				minCost = Math.min(minCost, form.getDriveCost());
-			}
-		}
-		return minCost;
-	}
-
-	public static double getMinimumDPForLimit(Player player) {
-		int minCost = 1000;
-		if (Utils.getPlayerLimitAttacks(player).size() > 0) {
-			for (Limit limit : Utils.getPlayerLimitAttacks(player)) {
-				minCost = Math.min(minCost, limit.getCost());
-			}
-		}
-		return minCost;
 	}
 
 	public static List<String> appendEnchantmentNames(String text, CompoundTag pStoredEnchantments) {
@@ -1418,6 +1435,10 @@ public class Utils {
 				hp.addPermanentModifier(new AttributeModifier(Utils.mobLevelHPModifier, "kk_mob_level_hp", level * ModConfigs.mobLevelStats / 500, AttributeModifier.Operation.MULTIPLY_BASE));
 			}
 		}
+	}
+
+	public static List<DriveForm> getVisibleDriveForms(Player player) {
+		return ModDriveForms.registry.get().getValues().stream().filter(driveForm -> driveForm.displayInCommandMenu(player)).toList();
 	}
 
 }
