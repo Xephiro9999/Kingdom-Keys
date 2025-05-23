@@ -243,7 +243,6 @@ public class ClientUtils {
                 playerData.setShotlockList(message.shotlockList);
                 playerData.setEquippedShotlock(message.equippedShotlock);
                 playerData.setDriveFormMap(message.driveFormMap);
-                playerData.setVisibleDriveForms(message.visibleDriveForms);
                 playerData.setAbilityMap(message.abilityMap);
                 playerData.setAntiPoints(message.antipoints);
                 playerData.setPartiesInvited(message.partyList);
@@ -283,7 +282,8 @@ public class ClientUtils {
 
                 playerData.setSingleStyle(message.singleStyle);
                 playerData.setDualStyle(message.dualStyle);
-                
+
+                playerData.setSynthesisedRecipes(message.synthesisedRecipes);
                 Minecraft.getInstance().player.getAttribute(Attributes.MAX_HEALTH).setBaseValue(message.maxHp);
             }
         };
